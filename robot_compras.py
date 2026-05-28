@@ -1,9 +1,8 @@
 from playwright.sync_api import sync_playwright
 
 def agregar_producto_fester(producto_recomendado):
-    """Navega por la página oficial de Fester, busca un producto y lo agrega al carrito en la nube."""
+    """Navega por la página oficial de Fester y agrega el producto exacto al carrito."""
     with sync_playwright() as p:
-        # Configuración obligatoria para que el navegador funcione en el servidor de la nube
         browser = p.chromium.launch(
             headless=True,
             executable_path="/usr/bin/chromium"
@@ -11,35 +10,39 @@ def agregar_producto_fester(producto_recomendado):
         page = browser.new_page()
         
         try:
-            # Abrir el sitio oficial de Fester México
+            # 1. Entrar a Fester
             page.goto("https://www.fester.com.mx/es.html", timeout=60000)
             
-            # 1. Hacer clic en el icono de la lupa para abrir el buscador
-            page.click('.search-icon, .header-search, button[aria-label="Search"]', timeout=8000)
+            # 2. Abrir buscador
+            page.click('.search-icon, .header-search, button[aria-label="Search"]', timeout=10000)
             
-            # 2. Escribir el producto recomendado y presionar Enter
+            # 3. Escribir el producto real (ej: "Proshield")
             page.fill('input[type="search"], input[name="q"]', producto_recomendado)
             page.press('input[type="search"], input[name="q"]', 'Enter')
             
-            # Esperar 5 segundos a que la página procese y muestre los resultados
+            # Esperar a que carguen los resultados reales
             page.wait_for_timeout(5000) 
             
-            # 3. Hacer clic en el primer producto de la lista de resultados
-            page.locator('a.teaser-link, a.product-link, a').first.click(timeout=8000)
+            # 4. CLIC DE PRECISIÓN: Buscamos enlaces que estén DENTRO de los resultados,
+            # ignorando el botón de "Skip to Content" y menús.
+            # Buscamos clases comunes en Fester como .teaser o .product-card
+            selector_producto = ".teaser__title-link, .product-item a, .cmp-teaser__title-link"
             
-            # Esperar 4 segundos a que cargue la página de detalles del producto
+            if page.locator(selector_producto).count() > 0:
+                page.locator(selector_producto).first.click(timeout=10000)
+            else:
+                # Si no encuentra las clases, busca el primer enlace que NO sea el de Skip
+                page.locator('main a, #maincontent a').first.click(timeout=10000)
+            
             page.wait_for_timeout(4000)
             
-            # 4. Hacer clic en el botón "Agregar al carrito" usando la etiqueta exacta
-            page.click('button[aria-label="Add to cart"]', timeout=8000)
+            # 5. Clic al botón de agregar al carrito (tu llave maestra)
+            page.click('button[aria-label="Add to cart"]', timeout=10000)
             
-            # Pausa de confirmación
-            page.wait_for_timeout(2000)
-            
-            return f"¡Misión cumplida! El sistema automático agregó {producto_recomendado} a tu carrito en la tienda oficial."
+            return f"¡Misión cumplida! He agregado {producto_recomendado} a tu carrito en Fester México."
             
         except Exception as e:
-            return f"Hubo un contratiempo visual en la página oficial. Detalle del error: {e}"
+            return f"El robot no pudo completar el clic. El diseño de la página dice: {e}"
             
         finally:
             browser.close()
