@@ -24,7 +24,7 @@ def reproducir_voz(texto):
 
 # --- BARRA LATERAL ---
 st.sidebar.header("1. Configuración")
-api_key = st.sidebar.text_input("Pega aquí tu API Key:", type="password")
+api_key = st.secrets["GEMINI_API_KEY"]
 
 st.sidebar.header("2. Evidencia Visual")
 foto_camara = st.sidebar.camera_input("Cámara")
