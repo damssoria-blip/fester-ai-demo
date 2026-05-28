@@ -22,18 +22,6 @@ def reproducir_voz(texto):
     except Exception as e:
         st.error(f"Error reproduciendo audio: {e}")
 
-# --- BARRA LATERAL ---
-st.sidebar.header("1. Configuración")
-api_key = st.secrets["GEMINI_API_KEY"]
-
-st.sidebar.header("2. Evidencia Visual")
-foto_camara = st.sidebar.camera_input("Cámara")
-foto_subida = st.sidebar.file_uploader("O sube foto", type=['jpg', 'jpeg', 'png'])
-foto_final = foto_camara if foto_camara else foto_subida
-
-if foto_final:
-    st.sidebar.image(foto_final, caption="Superficie a analizar", use_container_width=True)
-
 # --- INICIALIZAR LA MEMORIA ---
 if "historial_pantalla" not in st.session_state:
     st.session_state.historial_pantalla = []
@@ -41,10 +29,19 @@ if "historial_pantalla" not in st.session_state:
 if "chat_ia" not in st.session_state:
     st.session_state.chat_ia = None
 
+# Intentar extraer de forma segura la API Key de la Bóveda de Secretos
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+except Exception:
+    api_key = None
+    st.sidebar.error("⚠️ Falta configurar la GEMINI_API_KEY en los Secrets de Streamlit Cloud.")
+
+# Conectar el modelo con las instrucciones del sistema calibradas
 if api_key and st.session_state.chat_ia is None:
     try:
         genai.configure(api_key=api_key)
-   instrucciones_sistema = """
+        
+        instrucciones_sistema = """
         Eres un ingeniero experto en soporte técnico de la marca Fester.
         ¡IMPORTANTE! Tienes una integración especial que te permite agregar productos al carrito de compras del usuario automáticamente.
         
@@ -57,6 +54,7 @@ if api_key and st.session_state.chat_ia is None:
         - Tus respuestas serán leídas en voz alta. Sé conversacional, fluido y ve al grano.
         - EVITA viñetas o listas raras.
         """
+        
         modelo = genai.GenerativeModel(
             model_name='gemini-2.5-flash',
             system_instruction=instrucciones_sistema
@@ -65,12 +63,22 @@ if api_key and st.session_state.chat_ia is None:
     except Exception as e:
         st.sidebar.error(f"Error al conectar: {e}")
 
+# --- BARRA LATERAL (EVIDENCIA VISUAL) ---
+st.sidebar.header("Evidencia Visual")
+foto_camara = st.sidebar.camera_input("Cámara")
+foto_subida = st.sidebar.file_uploader("O sube foto", type=['jpg', 'jpeg', 'png'])
+foto_final = foto_camara if foto_camara else foto_subida
+
+if foto_final:
+    st.sidebar.image(foto_final, caption="Superficie a analizar", use_container_width=True)
+
+# --- ÁREA PRINCIPAL (INTERFAZ DE CHAT) ---
 st.title("🏗️ Fester AI: Asistente Inteligente")
 
-# Análisis de la foto inicial
+# Botón detonador para el análisis de imagen inicial
 if foto_final and st.sidebar.button("🔍 Iniciar Análisis Visual"):
     if not st.session_state.chat_ia:
-        st.sidebar.error("⚠️ Pon tu API Key primero.")
+        st.sidebar.error("⚠️ El cerebro de la IA no está listo. Revisa tu llave.")
     else:
         imagen = Image.open(foto_final)
         imagen.thumbnail((800, 800))
@@ -84,7 +92,7 @@ if foto_final and st.sidebar.button("🔍 Iniciar Análisis Visual"):
             except Exception as e:
                 st.error(f"Error: {e}")
 
-# Dibujar el historial
+# Mostrar todos los mensajes guardados
 for mensaje in st.session_state.historial_pantalla:
     with st.chat_message("user" if mensaje["rol"] == "usuario" else "assistant"):
         st.markdown(mensaje["texto"])
@@ -103,7 +111,7 @@ nueva_pregunta = texto_hablado if texto_hablado else texto_escrito
 
 if nueva_pregunta:
     if not st.session_state.chat_ia:
-        st.error("⚠️ Pon tu API Key en el menú de la izquierda.")
+        st.error("⚠️ El sistema no está conectado con la IA.")
     else:
         with st.chat_message("user"):
             st.markdown(nueva_pregunta)
@@ -111,26 +119,15 @@ if nueva_pregunta:
         
         with st.spinner("Procesando..."):
             try:
-                # --- EL GATILLO DEL ROBOT ---
+                # --- GATILLO DINÁMICO DEL ROBOT ---
                 texto_minusculas = nueva_pregunta.lower()
                 if "comprar" in texto_minusculas or "carrito" in texto_minusculas:
-                    st.toast("Activando brazo robótico...", icon="🤖")
+                    st.toast("Activando brazo robótico en segundo plano...", icon="🤖")
                     
-                    # Para este demo, le mandamos un producto genérico o blanco hueso 
-                    resultado_robot = agregar_producto_fester("Impermeabilizante Acrílico")
+                    # Ejecutar el script automático pasándole una búsqueda genérica
+                    resultado_robot = agregar_producto_fester("Impermeabilizante")
                     
                     st.session_state.historial_pantalla.append({"rol": "ia", "texto": f"*(Acción automática)*: {resultado_robot}"})
                     with st.chat_message("assistant"):
                         st.success(resultado_robot)
-                # -----------------------------
-
-                respuesta = st.session_state.chat_ia.send_message(nueva_pregunta)
-                
-                with st.chat_message("assistant"):
-                    st.markdown(respuesta.text)
-                st.session_state.historial_pantalla.append({"rol": "ia", "texto": respuesta.text})
-                
-                reproducir_voz(respuesta.text)
-                
-            except Exception as e:
-                st.error(f"Error: {e}")
+                # ----------------
