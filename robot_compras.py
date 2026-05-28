@@ -1,7 +1,7 @@
 from playwright.sync_api import sync_playwright
 
 def agregar_producto_fester(producto_recomendado):
-    """Navega por la página oficial de Fester y agrega el producto exacto al carrito."""
+    """Navega por la página oficial de Fester y agrega el producto usando localización visual."""
     with sync_playwright() as p:
         browser = p.chromium.launch(
             headless=True,
@@ -16,33 +16,32 @@ def agregar_producto_fester(producto_recomendado):
             # 2. Abrir buscador
             page.click('.search-icon, .header-search, button[aria-label="Search"]', timeout=10000)
             
-            # 3. Escribir el producto real (ej: "Proshield")
+            # 3. Escribir el producto real
             page.fill('input[type="search"], input[name="q"]', producto_recomendado)
             page.press('input[type="search"], input[name="q"]', 'Enter')
             
-            # Esperar a que carguen los resultados reales
+            # Esperar a que carguen los resultados
             page.wait_for_timeout(5000) 
             
-            # 4. CLIC DE PRECISIÓN: Buscamos enlaces que estén DENTRO de los resultados,
-            # ignorando el botón de "Skip to Content" y menús.
-            # Buscamos clases comunes en Fester como .teaser o .product-card
+            # 4. CLIC DE PRECISIÓN: Seleccionar el primer producto real
             selector_producto = ".teaser__title-link, .product-item a, .cmp-teaser__title-link"
-            
             if page.locator(selector_producto).count() > 0:
                 page.locator(selector_producto).first.click(timeout=10000)
             else:
-                # Si no encuentra las clases, busca el primer enlace que NO sea el de Skip
                 page.locator('main a, #maincontent a').first.click(timeout=10000)
             
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(5000)
             
-            # 5. Clic al botón de agregar al carrito (tu llave maestra)
-            page.click('button[aria-label="Add to cart"]', timeout=10000)
+            # 5. EL MODO HUMANO: Buscar el botón visualmente por su texto en mayúsculas
+            page.locator('button:has-text("AGREGAR AL CARRITO")').first.click(timeout=15000)
             
-            return f"¡Misión cumplida! He agregado {producto_recomendado} a tu carrito en Fester México."
+            # Pausa para que el servidor registre el clic
+            page.wait_for_timeout(3000)
+            
+            return f"¡Misión cumplida! He agregado {producto_recomendado} a tu carrito usando el modo de lectura visual."
             
         except Exception as e:
-            return f"El robot no pudo completar el clic. El diseño de la página dice: {e}"
+            return f"El robot llegó al producto, pero no pudo hacer el clic final. Error: {e}"
             
         finally:
             browser.close()
