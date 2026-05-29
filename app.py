@@ -45,7 +45,7 @@ if api_key and st.session_state.chat_ia is None:
 st.sidebar.header("Evidencia Visual")
 foto_final = st.sidebar.camera_input("Foto") or st.sidebar.file_uploader("Subir", type=['jpg','png'])
 
-st.title("🏗️ Fester AI: Asistente Inteligente")
+st.title("👷‍♂️ Chalancito")
 
 if foto_final and st.sidebar.button("🔍 Analizar"):
     img = Image.open(foto_final)
